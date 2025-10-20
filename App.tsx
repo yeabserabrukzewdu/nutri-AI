@@ -262,9 +262,10 @@ const App: React.FC = () => {
   const handleCloseModal = () => setModalConfig({ isOpen: false, initialTab: "camera" })
 
   const handleAddFood = async (foodItems: FoodItem[]) => {
+    const today = new Date()
     const timestampedItems = foodItems.map((item) => ({
       ...item,
-      timestamp: selectedDate.getTime(),
+      timestamp: today.getTime(),
     }))
     setLoggedFoods((prev) => [...prev, ...timestampedItems] as LogEntry[])
 
@@ -294,12 +295,14 @@ const App: React.FC = () => {
     } else {
       try {
         const updatedFoods = [...loggedFoods, ...timestampedItems]
-        localStorage.setItem(`foodLog-${formattedDate}`, JSON.stringify(updatedFoods))
+        localStorage.setItem(`foodLog-${getFormattedDate(today)}`, JSON.stringify(updatedFoods))
       } catch (e) {
         console.error("Failed to save local logs", e)
         setError("Failed to save food log locally.")
       }
     }
+
+    setSelectedDate(today)
     handleCloseModal()
   }
 
@@ -407,7 +410,7 @@ const App: React.FC = () => {
           {activeSection === "calendar" && (
             <>
               <div className="lg:col-span-2">
-                <CalendarView selectedDate={selectedDate} onDateChange={setSelectedDate} />
+                <CalendarView selectedDate={selectedDate} onDateChange={setSelectedDate} loggedFoods={loggedFoods} />
               </div>
 
               <div className="lg:col-span-1">
