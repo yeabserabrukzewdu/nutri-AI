@@ -44,6 +44,10 @@ const App: React.FC = () => {
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [alertedMacros, setAlertedMacros] = useState<Set<string>>(new Set())
+  const [toasts, setToasts] = useState<
+    Array<{ id: string; message: string; type: "success" | "error" | "warning" | "info" }>
+  >([])
 
   const formattedDate = getFormattedDate(selectedDate)
   const lastMigratedUid = useRef<string | null>(null)
@@ -257,6 +261,43 @@ const App: React.FC = () => {
     }
   }, [formattedDate])
 
+  const showToast = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    const id = Date.now().toString()
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4000)
+  }
+
+  const checkMacroGoals = (foods: LogEntry[], currentGoals: MacroGoals) => {
+    const totals = foods.reduce(
+      (acc, item) => {
+        acc.calories += item.calories
+        acc.protein += item.protein
+        acc.carbs += item.carbs
+        acc.fat += item.fat
+        return acc
+      },
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    )
+
+    const macroNames = [
+      { key: "calories", label: "Calories", value: totals.calories, goal: currentGoals.calories },
+      { key: "protein", label: "Protein", value: totals.protein, goal: currentGoals.protein },
+      { key: "carbs", label: "Carbs", value: totals.carbs, goal: currentGoals.carbs },
+      { key: "fat", label: "Fat", value: totals.fat, goal: currentGoals.fat },
+    ]
+
+    const newAlerted = new Set(alertedMacros)
+    macroNames.forEach(({ key, label, value, goal }) => {
+      if (value >= goal && !alertedMacros.has(key)) {
+        showToast(`🎉 You've reached your ${label} goal!`, "success")
+        newAlerted.add(key)
+      }
+    })
+    setAlertedMacros(newAlerted)
+  }
+
   // UI actions
   const handleOpenModal = (tab: ModalTab) => setModalConfig({ isOpen: true, initialTab: tab })
   const handleCloseModal = () => setModalConfig({ isOpen: false, initialTab: "camera" })
@@ -288,14 +329,17 @@ const App: React.FC = () => {
           setError("Failed to save food log to cloud. Stored locally.")
         }
       }
-      setLoggedFoods((prev) => [
-        ...prev.filter((p) => !timestampedItems.some((t) => t.name === p.name && t.timestamp === p.timestamp)),
+      const updatedFoods = [
+        ...loggedFoods.filter((p) => !timestampedItems.some((t) => t.name === p.name && t.timestamp === p.timestamp)),
         ...newItems,
-      ])
+      ]
+      setLoggedFoods(updatedFoods)
+      checkMacroGoals(updatedFoods, goals)
     } else {
       try {
         const updatedFoods = [...loggedFoods, ...timestampedItems]
         localStorage.setItem(`foodLog-${getFormattedDate(today)}`, JSON.stringify(updatedFoods))
+        checkMacroGoals(updatedFoods, goals)
       } catch (e) {
         console.error("Failed to save local logs", e)
         setError("Failed to save food log locally.")
@@ -375,6 +419,25 @@ const App: React.FC = () => {
   return (
     <div className="bg-white text-gray-900 min-h-screen font-sans pb-24">
       <div className="container mx-auto p-4 md:p-6 max-w-4xl">
+        <div className="fixed bottom-32 sm:bottom-6 right-4 left-4 sm:left-auto sm:w-96 z-50 space-y-3 pointer-events-none">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`p-4 rounded-lg shadow-lg animate-slide-up pointer-events-auto ${
+                toast.type === "success"
+                  ? "bg-green-50 border border-green-200 text-green-800"
+                  : toast.type === "error"
+                    ? "bg-red-50 border border-red-200 text-red-800"
+                    : toast.type === "warning"
+                      ? "bg-yellow-50 border border-yellow-200 text-yellow-800"
+                      : "bg-blue-50 border border-blue-200 text-blue-800"
+              }`}
+            >
+              {toast.message}
+            </div>
+          ))}
+        </div>
+
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 animate-fade-in">
             {error}
