@@ -10,7 +10,7 @@ import LogFoodActions from "./components/LogFoodActions"
 import BottomNav from "./components/BottomNav"
 import AuthPage from "./components/AuthPage"
 import SignupModal from "./components/SignupModal"
-import Profile from "./components/profile"
+import Profile from "./components/Profile"
 import { signOut, onAuthStateChanged } from "firebase/auth"
 import type { FoodItem, MacroGoals } from "./types"
 import type { LogEntry } from "./services/firestoreService"
@@ -346,6 +346,8 @@ const App: React.FC = () => {
       }
     }
 
+    showToast("Food added to log", "success")
+    setActiveSection("insights")
     setSelectedDate(today)
     handleCloseModal()
   }
