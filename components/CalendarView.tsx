@@ -2,13 +2,15 @@
 
 import React from "react"
 import { getDaysInMonth, getMonthYear, getDayOfWeek, isSameDay } from "../utils/dateUtils"
+import type { LogEntry } from "../services/firestoreService"
 
 interface CalendarViewProps {
   selectedDate: Date
   onDateChange: (date: Date) => void
+  loggedFoods?: LogEntry[]
 }
 
-const CalendarView = ({ selectedDate, onDateChange }: CalendarViewProps) => {
+const CalendarView = ({ selectedDate, onDateChange, loggedFoods = [] }: CalendarViewProps) => {
   const [currentMonth, setCurrentMonth] = React.useState(
     new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
   )
@@ -16,6 +18,13 @@ const CalendarView = ({ selectedDate, onDateChange }: CalendarViewProps) => {
   const daysInMonth = getDaysInMonth(currentMonth)
   const firstDayOfMonth = getDayOfWeek(daysInMonth[0])
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+  const hasFoodLogs = (day: Date) => {
+    return loggedFoods.some((log) => {
+      const logDate = typeof log.timestamp === "number" ? new Date(log.timestamp) : null
+      return logDate && isSameDay(logDate, day)
+    })
+  }
 
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
@@ -48,17 +57,22 @@ const CalendarView = ({ selectedDate, onDateChange }: CalendarViewProps) => {
         {daysInMonth.map((day) => {
           const isSelected = isSameDay(day, selectedDate)
           const isToday = isSameDay(day, new Date())
+          const hasLogs = hasFoodLogs(day)
           return (
             <button
               key={day.toString()}
               onClick={() => onDateChange(day)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all font-semibold
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all font-semibold relative
                 ${isSelected ? "bg-orange-600 text-white shadow-lg" : ""}
                 ${!isSelected && isToday ? "border-2 border-orange-500 text-orange-600" : ""}
                 ${!isSelected && !isToday ? "hover:bg-gray-100 text-gray-700" : ""}
               `}
             >
               {day.getDate()}
+              {hasLogs && !isSelected && (
+                <div className="absolute bottom-1 w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+              )}
+              {hasLogs && isSelected && <div className="absolute bottom-1 w-1.5 h-1.5 bg-white rounded-full"></div>}
             </button>
           )
         })}
